@@ -1,0 +1,194 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+void main() => runApp(BalloonPopApp());
+
+class BalloonPopApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Balloon Pop',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: BalloonPopScreen(),
+    );
+  }
+}
+
+class BalloonPopScreen extends StatefulWidget {
+  @override
+  _BalloonPopScreenState createState() => _BalloonPopScreenState();
+}
+
+class _BalloonPopScreenState extends State<BalloonPopScreen> {
+  int score = 0;
+  int balloonsPopped = 0;
+  int balloonsMissed = 0;
+  int timeLeft = 120; // 2 minutes
+  Timer? timer; // Make timer nullable
+  List<Balloon> balloons = [];
+
+  @override
+  void initState() {
+    super.initState();
+    startGame();
+  }
+
+  void startGame() {
+    timer = Timer.periodic(Duration(seconds: 1), (Timer t) {
+      setState(() {
+        if (timeLeft < 1) {
+          endGame();
+        } else {
+          timeLeft--;
+        }
+      });
+    });
+
+    Timer.periodic(Duration(milliseconds: 500), (Timer t) {
+      setState(() {
+        balloons.add(Balloon());
+      });
+    });
+
+    Timer.periodic(Duration(seconds: 3), (Timer t) {
+      setState(() {
+        balloons.removeWhere((balloon) => balloon.isExpired);
+        balloonsMissed += balloons.length;
+        balloons = [];
+      });
+    });
+  }
+
+  void endGame() {
+    timer?.cancel(); // Cancel timer if not null
+    // You can add more logic here like saving high score, etc.
+  }
+
+  void popBalloon(Balloon balloon) {
+    setState(() {
+      balloons.remove(balloon);
+      score += 2;
+      balloonsPopped++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Balloon Pop'),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            SizedBox(height: 20),
+            Text(
+              'Time Left: ${timeLeft ~/ 60}:${(timeLeft % 60).toString().padLeft(2, '0')}',
+              style: TextStyle(fontSize: 24, color: Colors.white),
+            ),
+            SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: <Widget>[
+                Column(
+                  children: <Widget>[
+                    Text(
+                      'Balloons Popped',
+                      style: TextStyle(fontSize: 20, color: Colors.green),
+                    ),
+                    Text(
+                      '$balloonsPopped',
+                      style: TextStyle(fontSize: 24, color: Colors.white),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: <Widget>[
+                    Text(
+                      'Balloons Missed',
+                      style: TextStyle(fontSize: 20, color: Colors.red),
+                    ),
+                    Text(
+                      '$balloonsMissed',
+                      style: TextStyle(fontSize: 24, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            Expanded(
+              child: Stack(
+                children: balloons.map((balloon) {
+                  return AnimatedPositioned(
+                    duration: Duration(seconds: 4),
+                    left: balloon.x,
+                    top: balloon.y,
+                    child: GestureDetector(
+                      onTap: () {
+                        popBalloon(balloon);
+                      },
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: balloon.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class Balloon {
+  late double x;
+  late double y;
+  late double speed;
+  late Color color;
+  late int lifespan;
+  int startTime = DateTime.now().millisecondsSinceEpoch;
+
+  Balloon() {
+    final random = Random();
+    x = random.nextDouble() * 400; // Random position
+    y = random.nextDouble() * 500; // Random position
+    speed = random.nextInt(3).toDouble() + 1; // Random speed
+    color = _getRandomColor(); // Random color
+    lifespan = random.nextInt(6) + 4; // Random lifespan (4-9 seconds)
+  }
+
+  Color _getRandomColor() {
+    final random = Random();
+    return Color.fromRGBO(
+      random.nextInt(256),
+      random.nextInt(256),
+      random.nextInt(256),
+      1,
+    );
+  }
+
+  bool get isExpired {
+    final currentTime = DateTime.now().millisecondsSinceEpoch;
+    final elapsedTime = (currentTime - startTime) / 1000;
+    return elapsedTime >= lifespan;
+  }
+}
